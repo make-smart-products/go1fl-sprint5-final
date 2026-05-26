@@ -2,7 +2,6 @@ package news
 
 import (
 	"context"
-	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"html"
@@ -19,14 +18,14 @@ const (
 	defaultArticlesPerFeed = 12
 )
 
-// Source describes a trusted RSS feed used by the news site.
+// Source describes a trusted RSS feed used by the site.
 type Source struct {
 	Name     string `json:"name"`
 	URL      string `json:"url"`
 	Category string `json:"category"`
 }
 
-// Article is a normalized news item from one of the configured sources.
+// Article is a normalized item from one of the configured RSS feeds.
 type Article struct {
 	Title       string    `json:"title"`
 	Link        string    `json:"link"`
@@ -37,7 +36,7 @@ type Article struct {
 	PublishedAt time.Time `json:"publishedAt"`
 }
 
-// Snapshot is the public state returned by the cache and the API.
+// Snapshot is the public state returned by the cache and JSON API.
 type Snapshot struct {
 	Articles  []Article `json:"articles"`
 	Sources   []Source  `json:"sources"`
@@ -53,7 +52,7 @@ type Fetcher struct {
 	Now             func() time.Time
 }
 
-// DefaultSources returns Russian news feeds from established media and agencies.
+// DefaultSources returns Russian RSS feeds from established media and agencies.
 func DefaultSources() []Source {
 	return []Source{
 		{Name: "РИА Новости", URL: "https://ria.ru/export/rss2/index.xml", Category: "Главное"},
@@ -63,8 +62,8 @@ func DefaultSources() []Source {
 	}
 }
 
-// Fetch returns fresh articles from all configured feeds. Feeds that fail do not
-// block the full page: their errors are joined and returned with partial results.
+// Fetch returns fresh articles from all configured feeds. Failed feeds do not
+// block the whole page: their errors are joined and returned with partial data.
 func (f Fetcher) Fetch(ctx context.Context) ([]Article, error) {
 	sources := f.Sources
 	if len(sources) == 0 {
@@ -103,7 +102,7 @@ func (f Fetcher) Fetch(ctx context.Context) ([]Article, error) {
 	return articles, errors.Join(errs...)
 }
 
-// Cache keeps the latest successful aggregation result and refreshes it by schedule.
+// Cache keeps the latest successful aggregation result and refreshes by schedule.
 type Cache struct {
 	fetcher  Fetcher
 	interval time.Duration
@@ -134,7 +133,7 @@ func NewCache(fetcher Fetcher, interval time.Duration) *Cache {
 	}
 }
 
-// Start refreshes the cache immediately and then repeats the update on a ticker.
+// Start refreshes the cache immediately and then repeats updates on a ticker.
 func (c *Cache) Start(ctx context.Context) {
 	_ = c.Refresh(ctx)
 
@@ -189,7 +188,7 @@ func fetchSource(ctx context.Context, client *http.Client, source Source, limit 
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "RussianNewsSite/1.0 (+https://example.local)")
+	req.Header.Set("User-Agent", "RussianNewsSite/1.0")
 	req.Header.Set("Accept", "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8")
 
 	resp, err := client.Do(req)
@@ -359,19 +358,4 @@ func now(fn func() time.Time) time.Time {
 		return fn()
 	}
 	return time.Now()
-}
-
-// MarshalJSON keeps zero times readable for clients that render an empty cache state.
-func (s Snapshot) MarshalJSON() ([]byte, error) {
-	type alias Snapshot
-	if s.UpdatedAt.IsZero() {
-		return json.Marshal(struct {
-			alias
-			UpdatedAt *time.Time `json:"updatedAt"`
-		}{
-			alias:     alias(s),
-			UpdatedAt: nil,
-		})
-	}
-	return json.Marshal(alias(s))
 }

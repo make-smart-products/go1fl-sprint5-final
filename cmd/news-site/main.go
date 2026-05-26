@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Yandex-Practicum/tracker/internal/news"
+	"news_site/internal/news"
 )
 
 type pageData struct {
@@ -241,14 +241,6 @@ const homeTemplate = `<!doctype html>
 			box-shadow: 0 24px 80px rgba(0,0,0,.35);
 			backdrop-filter: blur(18px);
 		}
-		.hero::after {
-			content: "";
-			position: absolute;
-			inset: auto -8% -45% 45%;
-			height: 280px;
-			background: radial-gradient(circle, rgba(103,232,249,.28), transparent 68%);
-			pointer-events: none;
-		}
 		.kicker {
 			display: inline-flex;
 			gap: 10px;
@@ -451,13 +443,10 @@ const homeTemplate = `<!doctype html>
 
 		function applyFilters() {
 			const query = search.value.trim().toLowerCase();
-			let visible = 0;
 			for (const card of cards) {
 				const matchesCategory = activeCategory === "all" || card.dataset.category === activeCategory;
 				const matchesQuery = !query || card.textContent.toLowerCase().includes(query);
-				const show = matchesCategory && matchesQuery;
-				card.style.display = show ? "" : "none";
-				if (show) visible++;
+				card.style.display = matchesCategory && matchesQuery ? "" : "none";
 			}
 		}
 
